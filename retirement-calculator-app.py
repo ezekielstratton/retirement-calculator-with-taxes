@@ -5,6 +5,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter
 
+# Inject custom CSS
+st.markdown("""
+<style>
+/* General styles for better readability */
+body {
+    color: #333333; /* A neutral dark color for text */
+    background-color: #f5f5f5; /* Light background */
+}
+
+/* Adjust text for dark mode */
+@media (prefers-color-scheme: dark) {
+    body {
+        color: #f5f5f5; /* Light text color for dark mode */
+        background-color: #333333; /* Dark background */
+    }
+}
+
+/* Styling for Streamlit components */
+.stButton>button {
+    background-color: #4CAF50; /* Green background for buttons */
+    color: white; /* White text */
+}
+
+/* Dark mode button styling */
+@media (prefers-color-scheme: dark) {
+    .stButton>button {
+        background-color: #1a73e8; /* Blue background for dark mode */
+        color: white; /* White text */
+    }
+}
+
+/* Styling other elements as needed... */
+</style>
+""", unsafe_allow_html=True)
 
 
 # Tax configuration constants
