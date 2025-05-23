@@ -4,9 +4,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter
 
-# Tax configuration constants
+# ——— 2025 Tax configuration constants ———
 TAX_BRACKETS = {
-    'income': [(0, 11000), (11001, 44725), (44726, 95375), (95376, 182100), (182101, 231250), (231251, 578125), (578126, float('inf'))],
+    'income': [
+        (0, 11925),            # 10% up to $11,925
+        (11925, 48475),        # 12% $11,925–$48,475
+        (48475, 103350),       # 22% $48,475–$103,350
+        (103350, 197300),      # 24% $103,350–$197,300
+        (197300, 250525),      # 32% $197,300–$250,525
+        (250525, 626350),      # 35% $250,525–$626,350
+        (626350, float('inf')) # 37% over $626,350
+    ],
     'fica': [(0, 160000)],
     'capital_gains': [(0, 40000), (40001, 441450), (441451, float('inf'))]
 }
@@ -18,7 +26,7 @@ TAX_RATES = {
 }
 
 DEDUCTIONS = {
-    'income': 13850,
+    'income': 15000,  # Standard deduction for single filers in 2025
     'fica': 0,
     'capital_gains': 0
 }
@@ -41,11 +49,14 @@ def calculate_tax(income, tax_type):
             break
     return tax
 
+
 def income_tax(income):
     return calculate_tax(income, 'income')
 
+
 def fica_tax(income):
     return calculate_tax(income, 'fica')
+
 
 def capital_gains_tax(income):
     return calculate_tax(income, 'capital_gains')
@@ -86,7 +97,10 @@ df['Age'] = df['Year'] + age - 1
 # Salary Projection
 if diminish_growth:
     total_years = career_length
-    df['Salary'] = initial_salary * (1 + salary_growth * (1 - (df['Year'] - 1) / total_years))
+    # linearly decline growth from full rate to 0 over the career
+    decay_rates = np.linspace(salary_growth, 0, total_years - 1)
+    growth_rates = np.concatenate(([0], decay_rates))  # Year1 has zero growth
+    df['Salary'] = initial_salary * np.cumprod(1 + growth_rates)
 else:
     df['Salary'] = initial_salary * ((1 + salary_growth) ** (df['Year'] - 1))
 
@@ -102,24 +116,25 @@ df['Net Worth'] = 0
 df.loc[0, 'Net Worth'] = current_savings + df.loc[0, 'Retirement Contribution']
 
 for i in range(1, len(df)):
-    previous_net_worth = df.loc[i - 1, 'Net Worth']
-    contribution = df.loc[i, 'Retirement Contribution']
-    growth_rate = rate_of_return if previous_net_worth >= 0 else -interest_on_debt
-    df.loc[i, 'Net Worth'] = previous_net_worth * (1 + growth_rate) + contribution
+    prev = df.loc[i - 1, 'Net Worth']
+    contrib = df.loc[i, 'Retirement Contribution']
+    rate = rate_of_return if prev >= 0 else -interest_on_debt
+    df.loc[i, 'Net Worth'] = prev * (1 + rate) + contrib
 
+# Spending and Investment Income
 df['Spending'] = df['After-Tax Income'] - df['Retirement Contribution']
 df['Investment Income'] = df['Net Worth'] * withdrawal_rate + other_income
 
-# Determine Financial Freedom Age
-difference = df['Investment Income'] - df['Spending']
-df['Financial Freedom'] = difference >= 0
-first_ff_age = df[df['Financial Freedom']].iloc[0]['Age'] if df['Financial Freedom'].any() else None
+# Financial Freedom Age
+diff = df['Investment Income'] - df['Spending']
+df['Financial Freedom'] = diff >= 0
+first_ff = df[df['Financial Freedom']]
+first_ff_age = int(first_ff.iloc[0]['Age']) if not first_ff.empty else None
 
 # Display Results
 st.header("📊 Results Overview")
-
 if first_ff_age:
-    st.success(f"🎉 You can achieve financial freedom at age **{int(first_ff_age)}**!")
+    st.success(f"🎉 You can achieve financial freedom at age **{first_ff_age}**!")
 else:
     st.warning("Based on your current inputs, financial freedom is not achieved before life expectancy.")
 
@@ -148,7 +163,8 @@ st.pyplot(fig2)
 
 # Detailed Data Table
 st.subheader("Detailed Financial Projections")
-st.dataframe(df[['Age', 'Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']].style.format('${:,.0f}'))
+st.dataframe(df[['Age', 'Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']]
+             .style.format('${:,.0f}'))
 
 # Additional Insights
 st.header("📈 Additional Insights")
