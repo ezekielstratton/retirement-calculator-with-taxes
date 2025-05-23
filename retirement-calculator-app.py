@@ -164,7 +164,7 @@ st.pyplot(fig2)
 # Detailed Data Table
 df = df.set_index('Age')
 st.subheader("Detailed Financial Projections")
-st.dataframe(df[['Age', 'Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']]
+st.dataframe(df[['Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']]
              .style.format('${:,.0f}'))
 
 # Additional Insights
