@@ -35,12 +35,15 @@ def calculate_tax(income, tax_type):
     brackets = TAX_BRACKETS[tax_type]
     rates = TAX_RATES[tax_type]
     deduction = DEDUCTIONS[tax_type]
+    
     tax = 0
     taxable_income = max(0, income - deduction)
-    for i, (min_inc, max_inc) in enumerate(brackets):
+    
+    for i in range(len(brackets)):
+        min_income, max_income = brackets[i]
         rate = rates[i]
-        if taxable_income > min_inc:
-            income_in_bracket = min(taxable_income, max_inc) - min_inc
+        if taxable_income > min_income:
+            income_in_bracket = min(taxable_income, max_income) - min_income
             tax += income_in_bracket * rate
         else:
             break
@@ -69,73 +72,37 @@ st.sidebar.header("🧑 Personal Details")
 age = st.sidebar.number_input("Current Age", min_value=14, max_value=100, value=30)
 life_expectancy = st.sidebar.number_input("Life Expectancy", min_value=age+1, max_value=120, value=79)
 
-# Retirement Details
-st.sidebar.header("💡 Retirement Details")
-retirement_age = st.sidebar.number_input(
-    "Desired Retirement Age", min_value=age+1, max_value=life_expectancy, value=65
-)
-
-# Career Details
 st.sidebar.header("💼 Career Details")
-initial_salary = st.sidebar.number_input(
-    "Initial Annual Salary ($)", min_value=0, max_value=1_000_000, value=52_000, step=1_000
-)
-salary_growth = st.sidebar.slider(
-    "Expected Annual Salary Growth Rate (%)", min_value=0.0, max_value=20.0, value=3.0, step=0.1
-) / 100
+initial_salary = st.sidebar.number_input("Initial Annual Salary ($)", min_value=0, max_value=1_000_000, value=52_000, step=1_000)
+salary_growth = st.sidebar.slider("Expected Annual Salary Growth Rate (%)", min_value=0.0, max_value=20.0, value=3.0, step=0.1) / 100
 diminish_growth = st.sidebar.checkbox("Diminish Salary Growth to Zero Over Career")
 
 # Financial Information
 st.sidebar.header("💰 Financial Details")
-savings_rate = st.sidebar.slider(
-    "Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20
-) / 100
-current_savings = st.sidebar.number_input(
-    "Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1_000
-)
-interest_on_debt = st.sidebar.number_input(
-    "Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1
-) / 100
+savings_rate = st.sidebar.slider("Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20) / 100
+current_savings = st.sidebar.number_input("Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1_000)
+interest_on_debt = st.sidebar.number_input("Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1) / 100
 
 # Investment Assumptions
 st.sidebar.header("📈 Investment Assumptions")
-rate_of_return = st.sidebar.slider(
-    "Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1
-) / 100
-withdrawal_rate = st.sidebar.slider(
-    "Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1
-) / 100
-other_income = st.sidebar.number_input(
-    "Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1_000
-)
+rate_of_return = st.sidebar.slider("Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1) / 100
+withdrawal_rate = st.sidebar.slider("Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1) / 100
+other_income = st.sidebar.number_input("Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1_000)
 
 # Data Calculation
 career_length = life_expectancy - age
-retire_offset = retirement_age - age  # years until retirement
-
 df = pd.DataFrame({'Year': range(1, career_length + 1)})
 df['Age'] = df['Year'] + age - 1
 
 # Salary Projection
 if diminish_growth:
-    growth_years = max(retire_offset, 1)
-    # linearly decline growth from full rate to 0 over working years
-    decay = (
-        np.linspace(salary_growth, 0, growth_years - 1)
-        if growth_years > 1 else np.array([])
-    )
-    growth_rates = np.concatenate(([0], decay)) if decay.size else np.array([0])
-    salaries = initial_salary * np.cumprod(1 + growth_rates)
-    # zero out salary after retirement
-    if career_length > growth_years:
-        salaries = np.concatenate([salaries, np.zeros(career_length - growth_years)])
-    df['Salary'] = salaries
+    total_years = career_length
+    # linearly decline growth from full rate to 0 over the career
+    decay_rates = np.linspace(salary_growth, 0, total_years - 1)
+    growth_rates = np.concatenate(([0], decay_rates))  # Year1 has zero growth
+    df['Salary'] = initial_salary * np.cumprod(1 + growth_rates)
 else:
-    years_idx = np.arange(career_length)
-    salaries = initial_salary * ((1 + salary_growth) ** years_idx)
-    # zero out salary at and after retirement
-    salaries[retire_offset:] = 0
-    df['Salary'] = salaries
+    df['Salary'] = initial_salary * ((1 + salary_growth) ** (df['Year'] - 1))
 
 # Tax Calculations
 df['Income Tax'] = df['Salary'].apply(income_tax)
@@ -147,6 +114,7 @@ df['After-Tax Income'] = df['Salary'] - df['Total Tax']
 df['Retirement Contribution'] = df['After-Tax Income'] * savings_rate
 df['Net Worth'] = 0
 df.loc[0, 'Net Worth'] = current_savings + df.loc[0, 'Retirement Contribution']
+
 for i in range(1, len(df)):
     prev = df.loc[i - 1, 'Net Worth']
     contrib = df.loc[i, 'Retirement Contribution']
@@ -191,3 +159,23 @@ ax2.set_xlabel('Age')
 ax2.set_ylabel('Amount ($)')
 ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${int(x):,}'))
 ax2.legend()
+st.pyplot(fig2)
+
+# Detailed Data Table
+df = df.set_index('Age')
+st.subheader("Detailed Financial Projections")
+st.dataframe(df[['Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']]
+             .style.format('${:,.0f}'))
+
+# Additional Insights
+st.header("📈 Additional Insights")
+total_earnings = df['After-Tax Income'].sum()
+total_taxes = df['Total Tax'].sum()
+total_savings = df['Retirement Contribution'].sum()
+total_spending = df['Spending'].sum()
+
+col1, col2 = st.columns(2)
+col1.metric("Total After-Tax Earnings", f"${total_earnings:,.0f}")
+col1.metric("Total Taxes Paid", f"${total_taxes:,.0f}")
+col2.metric("Total Savings", f"${total_savings:,.0f}")
+col2.metric("Total Spending", f"${total_spending:,.0f}")
