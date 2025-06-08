@@ -7,195 +7,180 @@ from matplotlib.ticker import FuncFormatter
 # ——— 2025 Tax configuration constants ———
 TAX_BRACKETS = {
     'income': [
-        (0, 11925),            # 10% up to $11,925
-        (11925, 48475),        # 12% $11,925–$48,475
-        (48475, 103350),       # 22% $48,475–$103,350
-        (103350, 197300),      # 24% $103,350–$197,300
-        (197300, 250525),      # 32% $197,300–$250,525
-        (250525, 626350),      # 35% $250,525–$626,350
-        (626350, float('inf')) # 37% over $626,350
+        (0, 11925), (11925, 48475), (48475, 103350),
+        (103350, 197300), (197300, 250525), (250525, 626350),
+        (626350, float('inf'))
     ],
     'fica': [(0, 160000)],
     'capital_gains': [(0, 40000), (40001, 441450), (441451, float('inf'))]
 }
-
-TAX_RATES = {
-    'income': [0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37],
-    'fica': [0.0765],
-    'capital_gains': [0.0, 0.15, 0.20]
-}
-
-DEDUCTIONS = {
-    'income': 15000,  # Standard deduction for single filers in 2025
-    'fica': 0,
-    'capital_gains': 0
-}
+TAX_RATES = {'income': [0.10,0.12,0.22,0.24,0.32,0.35,0.37],'fica': [0.0765],'capital_gains': [0.0,0.15,0.20]}
+DEDUCTIONS = {'income': 15000, 'fica': 0, 'capital_gains': 0}
 
 def calculate_tax(income, tax_type):
-    brackets = TAX_BRACKETS[tax_type]
-    rates = TAX_RATES[tax_type]
-    deduction = DEDUCTIONS[tax_type]
-    
-    tax = 0
-    taxable_income = max(0, income - deduction)
-    
-    for i in range(len(brackets)):
-        min_income, max_income = brackets[i]
-        rate = rates[i]
-        if taxable_income > min_income:
-            income_in_bracket = min(taxable_income, max_income) - min_income
-            tax += income_in_bracket * rate
+    brackets, rates, deduction = TAX_BRACKETS[tax_type], TAX_RATES[tax_type], DEDUCTIONS[tax_type]
+    tax, taxable = 0, max(0, income - deduction)
+    for (min_i, max_i), rate in zip(brackets, rates):
+        if taxable > min_i:
+            tax += (min(taxable, max_i) - min_i) * rate
         else:
             break
     return tax
 
+def income_tax(i): return calculate_tax(i, 'income')
+def fica_tax(i): return calculate_tax(i, 'fica')
+def capital_gains_tax(i): return calculate_tax(i, 'capital_gains')
 
-def income_tax(income):
-    return calculate_tax(income, 'income')
+# Page configuration
+st.set_page_config(page_title="Retirement Planning", layout="wide")
 
+# Title
+st.title("🌿 Retirement Planning Calculator")
 
-def fica_tax(income):
-    return calculate_tax(income, 'fica')
-
-
-def capital_gains_tax(income):
-    return calculate_tax(income, 'capital_gains')
-
-# Streamlit app title
-st.title("🌟 Retirement Planning Calculator")
-
-# Sidebar for input parameters
+# Sidebar Inputs
 st.sidebar.title("Input Parameters")
 
-# Basic Information
+# Personal Details
 st.sidebar.header("🧑 Personal Details")
-age = st.sidebar.number_input("Current Age", min_value=14, max_value=100, value=30)
-# Retirement goal age
+age = st.sidebar.number_input("Current Age", 14, 100, 30)
 goal_retirement_age = st.sidebar.number_input(
-    "Goal Retirement Age", min_value=age+1, max_value=120, value=67
+    "Goal Retirement Age", age+1, 120, 67
 )
 
 # Career Details
 st.sidebar.header("💼 Career Details")
-initial_salary = st.sidebar.number_input(
-    "Current Salary ($)", min_value=0, max_value=1_000_000, value=52000, step=1000
-)
-end_salary = st.sidebar.number_input(
-    "End of Career Salary ($)", min_value=0, max_value=1_000_000, value=100000, step=1000
-)
+initial_salary = st.sidebar.number_input("Current Salary ($)", 0, 1_000_000, 52000, 1000)
+end_salary = st.sidebar.number_input("End-of-Career Salary ($)", 0, 1_000_000, 100000, 1000)
 
-# Financial Information
+# Financial Details Mode Toggle
 st.sidebar.header("💰 Financial Details")
-savings_rate = st.sidebar.slider(
-    "Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20
-) / 100
-current_savings = st.sidebar.number_input(
-    "Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1000
+mode = st.sidebar.radio(
+    "Contribution Method", ["Savings Rate", "Fixed Expenses"], index=0
 )
-interest_on_debt = st.sidebar.number_input(
-    "Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1
-) / 100
-
-# Investment Assumptions
-st.sidebar.header("📈 Investment Assumptions")
-rate_of_return = st.sidebar.slider(
-    "Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1
-) / 100
-withdrawal_rate = st.sidebar.slider(
-    "Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1
-) / 100
-other_income = st.sidebar.number_input(
-    "Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1000
-)
-
-# Data Calculation
-# Career length until retirement goal
-career_length = goal_retirement_age - age
-if career_length < 1:
-    career_length = 1
-
-# Build DataFrame for projection
-import pandas as pd  # ensure pandas in scope
-
-df = pd.DataFrame({'Year': range(1, career_length + 1)})
-df['Age'] = df['Year'] + age - 1
-
-# Salary Projection via geometric mean growth
-if initial_salary > 0 and career_length > 1:
-    growth_rate = (end_salary / initial_salary) ** (1 / (career_length - 1)) - 1
+if mode == "Savings Rate":
+    savings_rate = st.sidebar.slider(
+        "Savings Rate (% of After-Tax Income)", 0, 100, 20
+    ) / 100
+    fixed_expenses = None
 else:
-    growth_rate = 0
+    fixed_expenses = st.sidebar.number_input(
+        "Fixed Annual Expenses ($)", 0, 1_000_000, 30000, 1000
+    )
+    savings_rate = None
 
-df['Salary'] = initial_salary * ((1 + growth_rate) ** (df['Year'] - 1))
+current_savings = st.sidebar.number_input(
+    "Current Investments ($, negative for debt)", -1_000_000, 100_000_000, 0, 1000
+)
 
-# Tax Calculations
+# Advanced Settings
+with st.sidebar.expander("Advanced Settings"):
+    interest_on_debt = st.number_input(
+        "Interest Rate on Debt (%)", 0.0, 100.0, 8.0, 0.1
+    ) / 100
+    st.header("📈 Investment Assumptions")
+    rate_of_return = st.slider(
+        "Real Rate of Return (%)", 0.0, 15.0, 7.0, 0.1
+    ) / 100
+    withdrawal_rate = st.slider(
+        "Withdrawal Rate (%)", 0.0, 10.0, 4.0, 0.1
+    ) / 100
+    other_income = st.number_input(
+        "Other Retirement Income ($)", 0, 1_000_000, 0, 1000
+    )
+
+# Projection period
+years = max(1, goal_retirement_age - age)
+
+# Build DataFrame
+df = pd.DataFrame({'Year': range(1, years+1)})
+df['Age'] = age + df['Year'] - 1
+
+# Salary Projection via geometric mean
+growth = (end_salary/initial_salary)**(1/(years-1)) - 1 if initial_salary>0 and years>1 else 0
+df['Salary'] = initial_salary * (1+growth)**(df['Year']-1)
+
+# Tax calculations
 df['Income Tax'] = df['Salary'].apply(income_tax)
-df['FICA Tax'] = df['Salary'].apply(fica_tax)
-df['Total Tax'] = df['Income Tax'] + df['FICA Tax']
+df['FICA Tax']   = df['Salary'].apply(fica_tax)
+df['Total Tax']  = df['Income Tax'] + df['FICA Tax']
 df['After-Tax Income'] = df['Salary'] - df['Total Tax']
 
-# Savings and Net Worth
-df['Retirement Contribution'] = df['After-Tax Income'] * savings_rate
+# Contribution and Spending
+def compute_contrib_and_spend(row):
+    ati = row['After-Tax Income']
+    if mode == "Savings Rate":
+        contrib = ati * savings_rate
+        spend = ati - contrib
+    else:
+        spend = fixed_expenses
+        contrib = max(0, ati - fixed_expenses)
+    return pd.Series({'Contribution': contrib, 'Spending': spend})
+
+df[['Contribution', 'Spending']] = df.apply(compute_contrib_and_spend, axis=1)
+
+# Net Worth
 df['Net Worth'] = 0
-df.loc[0, 'Net Worth'] = current_savings + df.loc[0, 'Retirement Contribution']
+df.loc[0, 'Net Worth'] = current_savings + df.loc[0, 'Contribution']
 for i in range(1, len(df)):
     prev = df.loc[i-1, 'Net Worth']
-    contrib = df.loc[i, 'Retirement Contribution']
-    rate = rate_of_return if prev >= 0 else -interest_on_debt
-    df.loc[i, 'Net Worth'] = prev * (1 + rate) + contrib
+    contrib = df.loc[i, 'Contribution']
+    r = rate_of_return if prev >= 0 else -interest_on_debt
+    df.loc[i, 'Net Worth'] = prev * (1 + r) + contrib
 
-# Spending and Investment Income
-df['Spending'] = df['After-Tax Income'] - df['Retirement Contribution']
+# Investment Income and freedom
 df['Investment Income'] = df['Net Worth'] * withdrawal_rate + other_income
+df['Freedom'] = df['Investment Income'] >= df['Spending']
+ff = df[df['Freedom']]
+ff_age = int(ff.iloc[0]['Age']) if not ff.empty else None
 
-# Financial Freedom Age
-diff = df['Investment Income'] - df['Spending']
-df['Financial Freedom'] = diff >= 0
-first_ff = df[df['Financial Freedom']]
-first_ff_age = int(first_ff.iloc[0]['Age']) if not first_ff.empty else None
-
-# Display Results
+# Results Overview
 st.header("📊 Results Overview")
-if first_ff_age:
-    st.success(f"🎉 You can achieve financial freedom at age **{first_ff_age}**!")
+if ff_age:
+    st.success(f"🎉 You can achieve financial freedom at age **{ff_age}**!")
 else:
-    st.warning("Based on your current inputs, financial freedom is not achieved before your goal retirement age.")
+    st.warning("Financial freedom not reached by goal retirement age.")
 
-# Plot Net Worth
+# Color Palette
+colors = {
+    'net_worth': '#2E8B57', 'salary': '#66CDAA',
+    'spending': '#8FBC8F', 'invest_income': '#3CB371'
+}
+
+# Net Worth Plot
 fig1, ax1 = plt.subplots()
-ax1.plot(df['Age'], df['Net Worth'], label='Net Worth')
-ax1.fill_between(df['Age'], 0, df['Net Worth'], alpha=0.1)
+ax1.plot(df['Age'], df['Net Worth'], color=colors['net_worth'], label='Net Worth')
+ax1.fill_between(df['Age'], 0, df['Net Worth'], color=colors['net_worth'], alpha=0.2)
 ax1.set_xlabel('Age')
 ax1.set_ylabel('Net Worth ($)')
 ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${int(x):,}'))
 st.pyplot(fig1)
 
-# Plot Income vs Expenses
+# Income vs Expenses Plot
 fig2, ax2 = plt.subplots()
-ax2.plot(df['Age'], df['Salary'], label='Salary')
-ax2.plot(df['Age'], df['Spending'], label='Spending')
-ax2.plot(df['Age'], df['Investment Income'], label='Investment Income')
-if first_ff_age:
-    ax2.axvline(first_ff_age, linestyle='--', label='Financial Freedom Age')
+ax2.plot(df['Age'], df['Salary'], label='Salary', color=colors['salary'])
+ax2.plot(df['Age'], df['Spending'], label='Spending', color=colors['spending'])
+ax2.plot(df['Age'], df['Investment Income'], label='Investment Income', color=colors['invest_income'])
+if ff_age: ax2.axvline(ff_age, linestyle='--', color='#006400', label='Freedom Age')
 ax2.set_xlabel('Age')
 ax2.set_ylabel('Amount ($)')
 ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${int(x):,}'))
 ax2.legend()
 st.pyplot(fig2)
 
-# Show Detailed Projections
-df = df.set_index('Age')
+# Detailed Projections
+df_display = df.set_index('Age')[['Salary','After-Tax Income','Spending','Contribution','Net Worth','Investment Income']]
 st.subheader("Detailed Financial Projections")
-st.dataframe(df[['Salary','After-Tax Income','Spending','Retirement Contribution','Net Worth','Investment Income']]
-             .style.format('${:,.0f}'))
+st.dataframe(df_display.style.format('${:,.0f}'))
 
 # Additional Insights
-total_earnings = df['After-Tax Income'].sum()
-total_taxes = df['Total Tax'].sum()
-total_savings = df['Retirement Contribution'].sum()
-total_spending = df['Spending'].sum()
+totals = {
+    'After-Tax Earnings': df['After-Tax Income'].sum(),
+    'Taxes Paid': df['Total Tax'].sum(),
+    'Total Savings': df['Contribution'].sum(),
+    'Total Spending': df['Spending'].sum()
+}
 col1, col2 = st.columns(2)
-col1.metric("Total After-Tax Earnings", f"${total_earnings:,.0f}")
-col1.metric("Total Taxes Paid", f"${total_taxes:,.0f}")
-col2.metric("Total Savings", f"${total_savings:,.0f}")
-col2.metric("Total Spending", f"${total_spending:,.0f}")
+col1.metric("Total After-Tax Earnings", f"${totals['After-Tax Earnings']:,}")
+col1.metric("Total Taxes Paid", f"${totals['Taxes Paid']:,}")
+col2.metric("Total Savings", f"${totals['Total Savings']:,}")
+col2.metric("Total Spending", f"${totals['Total Spending']:,}")
