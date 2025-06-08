@@ -70,29 +70,52 @@ st.sidebar.title("Input Parameters")
 # Basic Information
 st.sidebar.header("🧑 Personal Details")
 age = st.sidebar.number_input("Current Age", min_value=14, max_value=100, value=30)
-life_expectancy = st.sidebar.number_input("Life Expectancy", min_value=age+1, max_value=120, value=79)
+# Retirement goal age
+goal_retirement_age = st.sidebar.number_input(
+    "Goal Retirement Age", min_value=age+1, max_value=120, value=67
+)
 
 # Career Details
 st.sidebar.header("💼 Career Details")
-initial_salary = st.sidebar.number_input("Current Salary ($)", min_value=0, max_value=1_000_000, value=52000, step=1000)
-end_salary = st.sidebar.number_input("End of Career Salary ($)", min_value=0, max_value=1_000_000, value=100000, step=1000)
+initial_salary = st.sidebar.number_input(
+    "Current Salary ($)", min_value=0, max_value=1_000_000, value=52000, step=1000
+)
+end_salary = st.sidebar.number_input(
+    "End of Career Salary ($)", min_value=0, max_value=1_000_000, value=100000, step=1000
+)
 
 # Financial Information
 st.sidebar.header("💰 Financial Details")
-savings_rate = st.sidebar.slider("Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20) / 100
-current_savings = st.sidebar.number_input("Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1000)
-interest_on_debt = st.sidebar.number_input("Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1) / 100
+savings_rate = st.sidebar.slider(
+    "Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20
+) / 100
+current_savings = st.sidebar.number_input(
+    "Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1000
+)
+interest_on_debt = st.sidebar.number_input(
+    "Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1
+) / 100
 
 # Investment Assumptions
 st.sidebar.header("📈 Investment Assumptions")
-rate_of_return = st.sidebar.slider("Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1) / 100
-withdrawal_rate = st.sidebar.slider("Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1) / 100
-other_income = st.sidebar.number_input("Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1000)
+rate_of_return = st.sidebar.slider(
+    "Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1
+) / 100
+withdrawal_rate = st.sidebar.slider(
+    "Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1
+) / 100
+other_income = st.sidebar.number_input(
+    "Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1000
+)
 
 # Data Calculation
-career_length = life_expectancy - age
+# Career length until retirement goal
+career_length = goal_retirement_age - age
 if career_length < 1:
     career_length = 1
+
+# Build DataFrame for projection
+import pandas as pd  # ensure pandas in scope
 
 df = pd.DataFrame({'Year': range(1, career_length + 1)})
 df['Age'] = df['Year'] + age - 1
@@ -115,9 +138,8 @@ df['After-Tax Income'] = df['Salary'] - df['Total Tax']
 df['Retirement Contribution'] = df['After-Tax Income'] * savings_rate
 df['Net Worth'] = 0
 df.loc[0, 'Net Worth'] = current_savings + df.loc[0, 'Retirement Contribution']
-
 for i in range(1, len(df)):
-    prev = df.loc[i - 1, 'Net Worth']
+    prev = df.loc[i-1, 'Net Worth']
     contrib = df.loc[i, 'Retirement Contribution']
     rate = rate_of_return if prev >= 0 else -interest_on_debt
     df.loc[i, 'Net Worth'] = prev * (1 + rate) + contrib
@@ -137,44 +159,41 @@ st.header("📊 Results Overview")
 if first_ff_age:
     st.success(f"🎉 You can achieve financial freedom at age **{first_ff_age}**!")
 else:
-    st.warning("Based on your current inputs, financial freedom is not achieved before life expectancy.")
+    st.warning("Based on your current inputs, financial freedom is not achieved before your goal retirement age.")
 
-# Plotting
-st.subheader("Net Worth Over Time")
+# Plot Net Worth
 fig1, ax1 = plt.subplots()
-ax1.plot(df['Age'], df['Net Worth'], label='Net Worth', color='green')
-ax1.fill_between(df['Age'], 0, df['Net Worth'], color='green', alpha=0.1)
+ax1.plot(df['Age'], df['Net Worth'], label='Net Worth')
+ax1.fill_between(df['Age'], 0, df['Net Worth'], alpha=0.1)
 ax1.set_xlabel('Age')
 ax1.set_ylabel('Net Worth ($)')
 ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${int(x):,}'))
 st.pyplot(fig1)
 
-st.subheader("Income and Expenses Over Time")
+# Plot Income vs Expenses
 fig2, ax2 = plt.subplots()
-ax2.plot(df['Age'], df['Salary'], label='Salary', color='blue')
-ax2.plot(df['Age'], df['Spending'], label='Spending', color='orange')
-ax2.plot(df['Age'], df['Investment Income'], label='Investment Income', color='green')
+ax2.plot(df['Age'], df['Salary'], label='Salary')
+ax2.plot(df['Age'], df['Spending'], label='Spending')
+ax2.plot(df['Age'], df['Investment Income'], label='Investment Income')
 if first_ff_age:
-    ax2.axvline(x=first_ff_age, color='red', linestyle='--', label='Financial Freedom Age')
+    ax2.axvline(first_ff_age, linestyle='--', label='Financial Freedom Age')
 ax2.set_xlabel('Age')
 ax2.set_ylabel('Amount ($)')
 ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${int(x):,}'))
 ax2.legend()
 st.pyplot(fig2)
 
-# Detailed Data Table
+# Show Detailed Projections
 df = df.set_index('Age')
 st.subheader("Detailed Financial Projections")
-st.dataframe(df[['Salary', 'After-Tax Income', 'Spending', 'Retirement Contribution', 'Net Worth', 'Investment Income']]
+st.dataframe(df[['Salary','After-Tax Income','Spending','Retirement Contribution','Net Worth','Investment Income']]
              .style.format('${:,.0f}'))
 
 # Additional Insights
-st.header("📈 Additional Insights")
 total_earnings = df['After-Tax Income'].sum()
 total_taxes = df['Total Tax'].sum()
 total_savings = df['Retirement Contribution'].sum()
 total_spending = df['Spending'].sum()
-
 col1, col2 = st.columns(2)
 col1.metric("Total After-Tax Earnings", f"${total_earnings:,.0f}")
 col1.metric("Total Taxes Paid", f"${total_taxes:,.0f}")
