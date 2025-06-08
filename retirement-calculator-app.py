@@ -72,37 +72,38 @@ st.sidebar.header("🧑 Personal Details")
 age = st.sidebar.number_input("Current Age", min_value=14, max_value=100, value=30)
 life_expectancy = st.sidebar.number_input("Life Expectancy", min_value=age+1, max_value=120, value=79)
 
+# Career Details
 st.sidebar.header("💼 Career Details")
-initial_salary = st.sidebar.number_input("Initial Annual Salary ($)", min_value=0, max_value=1_000_000, value=52_000, step=1_000)
-salary_growth = st.sidebar.slider("Expected Annual Salary Growth Rate (%)", min_value=0.0, max_value=20.0, value=3.0, step=0.1) / 100
-diminish_growth = st.sidebar.checkbox("Diminish Salary Growth to Zero Over Career")
+initial_salary = st.sidebar.number_input("Current Salary ($)", min_value=0, max_value=1_000_000, value=52000, step=1000)
+end_salary = st.sidebar.number_input("End of Career Salary ($)", min_value=0, max_value=1_000_000, value=100000, step=1000)
 
 # Financial Information
 st.sidebar.header("💰 Financial Details")
 savings_rate = st.sidebar.slider("Savings Rate (% of After-Tax Income)", min_value=0, max_value=100, value=20) / 100
-current_savings = st.sidebar.number_input("Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1_000)
+current_savings = st.sidebar.number_input("Current Investments ($)", min_value=-1_000_000, max_value=100_000_000, value=0, step=1000)
 interest_on_debt = st.sidebar.number_input("Interest Rate on Debt (%)", min_value=0.0, max_value=100.0, value=8.0, step=0.1) / 100
 
 # Investment Assumptions
 st.sidebar.header("📈 Investment Assumptions")
 rate_of_return = st.sidebar.slider("Expected Annual Real Rate of Return (%)", min_value=0.0, max_value=15.0, value=7.0, step=0.1) / 100
 withdrawal_rate = st.sidebar.slider("Withdrawal Rate During Retirement (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1) / 100
-other_income = st.sidebar.number_input("Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1_000)
+other_income = st.sidebar.number_input("Other Retirement Income ($)", min_value=0, max_value=1_000_000, value=0, step=1000)
 
 # Data Calculation
 career_length = life_expectancy - age
+if career_length < 1:
+    career_length = 1
+
 df = pd.DataFrame({'Year': range(1, career_length + 1)})
 df['Age'] = df['Year'] + age - 1
 
-# Salary Projection
-if diminish_growth:
-    total_years = career_length
-    # linearly decline growth from full rate to 0 over the career
-    decay_rates = np.linspace(salary_growth, 0, total_years - 1)
-    growth_rates = np.concatenate(([0], decay_rates))  # Year1 has zero growth
-    df['Salary'] = initial_salary * np.cumprod(1 + growth_rates)
+# Salary Projection via geometric mean growth
+if initial_salary > 0 and career_length > 1:
+    growth_rate = (end_salary / initial_salary) ** (1 / (career_length - 1)) - 1
 else:
-    df['Salary'] = initial_salary * ((1 + salary_growth) ** (df['Year'] - 1))
+    growth_rate = 0
+
+df['Salary'] = initial_salary * ((1 + growth_rate) ** (df['Year'] - 1))
 
 # Tax Calculations
 df['Income Tax'] = df['Salary'].apply(income_tax)
