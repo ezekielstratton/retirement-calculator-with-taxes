@@ -119,7 +119,7 @@ def render_visualizations(df, ff_age):
     growth_end  = growth_vals.iloc[-1]
     st.markdown(
         f"**Summary:** By retirement age {last_age}, you'll have contributed "
-        f"${contrib_end:,.0f} and earned ${growth_end:,.0f} in investment growth, "
+        f"${contrib_end:,.0f}$ and earned ${growth_end:,.0f}$ in investment growth, "
         f"for a total net worth of ${ret_net_worth:,.0f}."
     )
 
