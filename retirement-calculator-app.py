@@ -39,8 +39,8 @@ if mode == "Savings Rate":
     fixed_expenses = None
 else:
     fixed_expenses = st.sidebar.number_input(
-        "Monthly Expenses ($)", 1, 1_000_000, 40_000, 1_000,
-        help="Your projected monthly spending. Savings will be calculated as income minus these expenses."
+        "Yearly Expenses ($)", 1, 1_000_000, 40_000, 1_000,
+        help="Your projected yearly spending. Savings will be calculated as income minus these expenses."
     )
     savings_rate = None
 
@@ -78,3 +78,4 @@ df, ff_age = build_financials(
 
 # ——— 3) Render everything ———
 render_visualizations(df, ff_age)
+
