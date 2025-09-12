@@ -58,22 +58,31 @@ def build_financials(
     df = pd.DataFrame({'Year': range(1, years+1)})
     df['Age'] = age + df['Year'] - 1
 
-    # Salary Projection with decaying salary growth rate
-    # Salary growth as a % is higher early on, this function accounts for that
-    # We solve for a function whose growth rate = 0 at retirement age
-    # total span (years-1)
-    T = years - 1
-    # time since start
-    t = df['Year'] - 1
+ #   # Salary Projection with decaying salary growth rate
+ #   # Salary growth as a % is higher early on, this function accounts for that
+ #   # We solve for a function whose growth rate = 0 at retirement age
+ #   # total span (years-1)
+ #   T = years - 1
+ #   # time since start
+ #   t = df['Year'] - 1
     
     # Compute r₀ so that ∫₀ᵀ r(t) dt = ln(end/initial)
     # and let r(t) = r₀ · (1 – t/T) so that r(T)=0
-    r0 = 2 * np.log(end_salary / initial_salary) / T
+ #   r0 = 2 * np.log(end_salary / initial_salary) / T
     
     # Closed-form solution of dS/dt = r(t)·S
-    df['Salary'] = initial_salary * np.exp(
-        r0 * (t - t**2/(2*T))
-    )
+ #   df['Salary'] = initial_salary * np.exp(
+ #       r0 * (t - t**2/(2*T))
+ #   )
+    # --- Salary projection with simple compounded annual growth ---
+    T = years - 1                       # total compounding steps
+    t = (df['Year'] - 1).clip(lower=0)  # periods since start
+
+# CAGR that maps initial_salary -> end_salary over T periods
+    g = (end_salary / initial_salary) ** (1 / T) - 1 if T > 0 else 0.0
+
+# Salary_t = initial_salary * (1 + g) ** t
+    df['Salary'] = initial_salary * (1.0 + g) ** t
     # Tax calculations
     df['Income Tax']      = df['Salary'].apply(lambda i: calculate_tax(i, 'income'))
     df['FICA Tax']        = df['Salary'].apply(lambda i: calculate_tax(i, 'fica'))
@@ -108,3 +117,4 @@ def build_financials(
     ff_age = int(ff.iloc[0]['Age']) if not ff.empty else None
 
     return df, ff_age
+
