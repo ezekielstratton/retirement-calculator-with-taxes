@@ -79,7 +79,7 @@ def build_financials(
     t = (df['Year'] - 1).clip(lower=0)  # periods since start
 
 # CAGR that maps initial_salary -> end_salary over T periods
-    g = (end_salary / initial_salary) ** (1 / T) - 1 if T > 0 else 0.0
+    # g = (end_salary / initial_salary) ** (1 / T) - 1 if T > 0 else 0.0
 
 # Salary_t = initial_salary * (1 + g) ** t
     df['Salary'] = initial_salary * (1.0 + g) ** t
@@ -117,4 +117,5 @@ def build_financials(
     ff_age = int(ff.iloc[0]['Age']) if not ff.empty else None
 
     return df, ff_age
+
 
