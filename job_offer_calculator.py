@@ -44,8 +44,8 @@ for idx, col in enumerate(cols):
         init_sal = st.number_input(
             "Starting Salary ($)", 0, 1_000_000, 100_000, key=f"init_sal_{idx}"
         )
-        end_sal = st.number_input(
-            "End-of-Career Salary ($)", 0, 10_000_000, init_sal, key=f"end_sal_{idx}"
+        g = st.number_input(
+            "Salary Growth Rate (%)", 0, 100, 0"
         )
         # Contribution Method
         mode = st.radio(
@@ -139,3 +139,4 @@ for title, drawer in [
         with col:
             st.subheader(cfg['name'])
             st.plotly_chart(fig, use_container_width=True)
+
