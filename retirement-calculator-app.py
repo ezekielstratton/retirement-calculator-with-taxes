@@ -22,7 +22,7 @@ initial_salary = st.sidebar.number_input(
     help="Your current annual salary before taxes."
 )
 salary_growth_rate = st.sidebar.slider(
-    "Yearly Salary Growth Rate (%)", -10.0, 20.0, 2.0, 0.5,
+    "Yearly Salary Growth Rate (%)", 0.0, 20.0, 2.0, 0.5,
     help="Expected annual raise or salary growth rate."
 ) / 100
 
