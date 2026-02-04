@@ -21,10 +21,10 @@ initial_salary = st.sidebar.number_input(
     "Current Salary ($)", 0, 1_000_000, 52_000, 1_000,
     help="Your current annual salary before taxes."
 )
-end_salary = st.sidebar.number_input(
-    "End-of-Career Salary ($)", 0, 1_000_000_000, 100_000, 1_000,
-    help="Your expected final annual salary before retirement."
-)
+salary_growth_rate = st.sidebar.slider(
+    "Yearly Salary Growth Rate (%)", -10.0, 20.0, 2.0, 0.5,
+    help="Expected annual raise or salary growth rate."
+) / 100
 
 # Financial Details Mode Toggle
 mode = st.sidebar.radio(
@@ -70,7 +70,7 @@ with st.sidebar.expander("Advanced Settings"):
 # ——— 2) Compute projections ———
 df, ff_age = build_financials(
     age, goal_retirement_age,
-    initial_salary, end_salary,
+    initial_salary, salary_growth_rate,
     mode, savings_rate, fixed_expenses,
     current_savings,
     interest_on_debt, rate_of_return, withdrawal_rate, other_income
