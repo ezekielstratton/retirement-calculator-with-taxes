@@ -78,10 +78,10 @@ def build_financials(
     T = years - 1                       # total compounding steps
     t = (df['Year'] - 1).clip(lower=0)  # periods since start
 
-# CAGR that maps initial_salary -> end_salary over T periods
-    # g = (end_salary / initial_salary) ** (1 / T) - 1 if T > 0 else 0.0
+    # CAGR that maps initial_salary -> end_salary over T periods
+    g = (end_salary / initial_salary) ** (1 / T) - 1 if T > 0 else 0.0
 
-# Salary_t = initial_salary * (1 + g) ** t
+    # Salary_t = initial_salary * (1 + g) ** t
     df['Salary'] = initial_salary * (1.0 + g) ** t
     # Tax calculations
     df['Income Tax']      = df['Salary'].apply(lambda i: calculate_tax(i, 'income'))
