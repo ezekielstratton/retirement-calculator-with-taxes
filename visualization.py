@@ -78,40 +78,36 @@ def render_visualizations(df, ff_age):
         st.header("Net Worth at Retirement Age:")
         st.subheader(f"${ret_net_worth:,.0f}")
 
-    # ——— 3) Net Worth Breakdown (as % of assets) ———
+    # ——— 3) Net Worth Breakdown ———
     st.header("💰 Net Worth: Contributions vs. Investment Growth")
     # prepare components
     cum_contrib = df['Contribution'].cumsum()
     growth_vals = df['Net Worth'] - cum_contrib
-    # percentage of net worth from each source (avoid div by zero)
-    net_worth_safe = df['Net Worth'].replace(0, float('nan'))
-    contrib_pct = (cum_contrib / net_worth_safe * 100).fillna(0)
-    growth_pct = (growth_vals / net_worth_safe * 100).fillna(0)
     # interactive stacked bar chart
     fig1 = go.Figure()
     # Contributions trace
     fig1.add_trace(go.Bar(
         x=df['Age'],
-        y=contrib_pct,
+        y=cum_contrib,
         name='Contributions',
         marker_color=spending_color,
-        hovertemplate='%{y:,.1f}%<extra>Contributions</extra>'
+        hovertemplate='$%{y:,.0f}<extra>Contributions</extra>'
     ))
     # Investment Growth trace
     fig1.add_trace(go.Bar(
         x=df['Age'],
-        y=growth_pct,
+        y=growth_vals,
         name='Investment Growth',
         marker_color=savings_color,
-        hovertemplate='%{y:,.1f}%<extra>Investment Growth</extra>'
+        hovertemplate='$%{y:,.0f}<extra>Investment Growth</extra>'
     ))
     # styling
     fig1.update_layout(
         barmode='stack',
         template=plotly_template,
         xaxis_title='Age',
-        yaxis_title='% of Net Worth',
-        yaxis=dict(tickformat=',.0f', ticksuffix='%'),
+        yaxis_title='Net Worth ($)',
+        yaxis_tickformat='$,.0f',
         legend_title_text='',
         font_family="Source Sans Pro",
         font_color=label_color
@@ -121,11 +117,10 @@ def render_visualizations(df, ff_age):
     # Summary for chart 3
     contrib_end = cum_contrib.iloc[-1]
     growth_end  = growth_vals.iloc[-1]
-    growth_pct_end = growth_pct.iloc[-1]
     st.markdown(
-        f"**Summary:** By retirement age {last_age}, **{growth_pct_end:.0f}%** of your net worth "
-        f"comes from investment growth (${growth_end:,.0f}); ${contrib_end:,.0f} from contributions. "
-        f"Total net worth: ${ret_net_worth:,.0f}."
+        f"**Summary:** By retirement age {last_age}, you'll have contributed "
+        f"${contrib_end:,.0f}$ and earned ${growth_end:,.0f}$ in investment growth, "
+        f"for a total net worth of ${ret_net_worth:,.0f}."
     )
 
     # ——— 4) Passive Income vs. Spending ———
