@@ -96,7 +96,7 @@ def build_financials(
     df[['Contribution','Spending']] = df.apply(_cs, axis=1)
 
     # Net Worth
-    df['Net Worth'] = 0
+    df['Net Worth'] = 0.0
     df.loc[0,'Net Worth'] = current_savings + df.loc[0,'Contribution']
     for i in range(1, len(df)):
         prev    = df.loc[i-1,'Net Worth']
